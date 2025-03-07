@@ -1,38 +1,36 @@
- {
-  "keyboard_name": "OMRSH31H",
-  "manufacturer": "Makurisan",
-  "maintainer": "Mak",
-  "url": "",
-  "usb": {
-	"vid": "0x239A",
-    "pid": "0x0108",
-    "device_version": "0.0.1"
-   },
-  "features": {
-    "bootmagic": true,
-    "console": false,
-    "extrakey": true,
-    "mousekey": true,
-    "nkro": true
-  },
-  "matrix_pins": {
-    "direct": [
-      ["GP29","GP28","GP27","GP26"]  
-    ]
-  },  
-  "layout_aliases": {
-    "LAYOUT": "LAYOUT_1x4"
-  },
-  "layouts": {
-    "LAYOUT_1x4": {
-      "layout": [
-		{"x": 0, "y": 0, "matrix": [0, 0]},
-		{"x": 1, "y": 0, "matrix": [0, 1]},
-		{"x": 2, "y": 0, "matrix": [0, 2]},
-		{"x": 3, "y": 0, "matrix": [0, 3]}
-      ]
-    }
-  },
- "processor": "RP2040",
- "development_board": "promicro_rp2040"
+{
+    "keyboard_name": "OMRSH31H",
+    "manufacturer": "Makurisan",
+    "maintainer": "Mak",
+    "url": "",
+    "usb": {
+        "vid": "0x4653",
+        "pid": "0x0108",
+        "device_version": "0.0.1"
+    },
+    "features": {
+        "bootmagic": false,
+        "console": true,
+        "extrakey": true,
+        "mousekey": true,
+        "nkro": false
+    },
+    "matrix_pins": {
+        "direct": [["GP26", "GP29", "GP27", "GP28"]]
+    },
+    "layout_aliases": {
+        "LAYOUT": "LAYOUT_1x4"
+    },
+    "layouts": {
+        "LAYOUT_1x4": {
+            "layout": [
+                { "x": 0, "y": 0, "matrix": [0, 0] },
+                { "x": 1, "y": 0, "matrix": [0, 1] },
+                { "x": 2, "y": 0, "matrix": [0, 2] },
+                { "x": 3, "y": 0, "matrix": [0, 3] }
+            ]
+        }
+    },
+    "processor": "RP2040",
+    "development_board": "promicro_rp2040"
 }

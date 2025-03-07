@@ -24,6 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#define MATRIX_ROWS 1
 //#define MATRIX_COLS 4
 
+// Enable RESET command support
+//#define ENABLE_RESET_SUPPORT
 
 //#define QUICK_TAP_TERM 0
-//#define TAPPING_TERM 100
+#define TAPPING_TERM 175  // Time window for double tap (in ms)
+
+// Add build timestamp
+#define OMSRS32H_BUILDDATE (__DATE__ " " __TIME__)
