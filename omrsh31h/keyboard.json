@@ -13,10 +13,14 @@
         "console": true,
         "extrakey": true,
         "mousekey": true,
-        "nkro": false
+        "nkro": false,
+        "direct_pisns": true
     },
     "matrix_pins": {
-        "direct": [["GP26", "GP29", "GP27", "GP28"]]
+        "direct": [
+            ["GP26", "GP29", "GP27", "GP28"],
+            ["GP8", "GP7", null, null]
+        ]
     },
     "layout_aliases": {
         "LAYOUT": "LAYOUT_1x4"
