@@ -1,24 +1,22 @@
 {
     "keyboard_name": "OMRSH31H",
-    "manufacturer": "Makurisan",
+    "manufacturer": "Olympus",
     "maintainer": "Mak",
     "url": "",
     "usb": {
-        "vid": "0x4653",
-        "pid": "0x0108",
-        "device_version": "0.0.1"
+        "vid": "0x35EE",
+        "pid": "0x1308",
+        "device_version": "1.4.3"
     },
     "features": {
         "bootmagic": false,
-        "console": true,
         "extrakey": true,
         "mousekey": true,
-        "nkro": false,
-        "direct_pisns": true
+        "nkro": false
     },
     "matrix_pins": {
         "direct": [
-            ["GP26", "GP29", "GP27", "GP28"],
+            ["GP27", "GP26", "GP28", "GP29"],
             ["GP8", "GP7", null, null]
         ]
     },
