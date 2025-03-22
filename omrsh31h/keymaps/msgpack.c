@@ -2,8 +2,8 @@
 #include "config.h"
 #include "raw_hid.h"
 #include "msgpack.h"
-#include "mpack.h"
 
+#define MAX_ENTRIES 16
 
 typedef struct {
     uint8_t key;
@@ -14,23 +14,134 @@ static msgpack_key_t msgpack_keys[] = {
     {MSGPACK_UNKNOWN, "unknown"},
     {MSGPACK_CURRENT_KEYCODE, "keycode"},
     {MSGPACK_CURRENT_LAYER, "layer"},
+    {MSGPACK_CURRENT_GETLAYER, "get_layer"},
     {MSGPACK_CURRENT_LEDSTATE, "ledstate"}
 };
 
-void mpack_assert_fail(const char* message) {
-    uprintf("MessagePack assertion failed: %s\n", message);
-    while(1) {} // Halt on assertion failure
+// Function to create a MessagePack map with variable entries
+int8_t msgpack_send(const msgpack_t* msgpack) {
+    if (msgpack->count > MAX_ENTRIES) {
+        return -1; // Exceeds maximum allowed entries
+    }
+
+    uint8_t buffer[RAW_EPSIZE] = {0}; // Buffer to hold the output message
+    uint16_t buffersize = RAW_EPSIZE; // Size of the provided buffer
+
+      // Calculate the required buffer size
+      size_t string_size = 1 + 4; // 1 byte for the string header, 4 bytes for "QMV1"
+      size_t map_size = 1 + msgpack->count * 4; // 1 byte for the map header, 1 byte for key, 1 byte for int16 marker, 2 bytes for each value
+      size_t required_size = string_size + map_size;
+
+      if (buffersize < required_size) {
+          return -2; // Provided buffer is too small
+      }
+
+      // Initialize the buffer
+      uint8_t* ptr = buffer;
+
+      // Write the string "QMV1" in MessagePack format
+      *ptr++ = 0xa4; // FixStr format for a string with 4 characters
+      memcpy(ptr, "QMV1", 4);
+      ptr += 4;
+
+      // Write the map header (fixmap for msgpack->count entries)
+      *ptr++ = 0x80 | msgpack->count; // 0x80 + number of entries
+
+      // Write the key-value pairs
+      for (size_t i = 0; i < msgpack->count; ++i) {
+          *ptr++ = msgpack->pairs[i].key;   // Key
+          *ptr++ = 0xd1; // Int 16 marker
+          *ptr++ = (msgpack->pairs[i].value >> 8) & 0xFF; // High byte of value
+          *ptr++ = msgpack->pairs[i].value & 0xFF;        // Low byte of value
+      }
+    raw_hid_send((uint8_t*)buffer, RAW_EPSIZE);
+    uprintf("Sent %d key-value pairs\n", msgpack->count);
+
+    // Return the length of the created buffer
+    return (int8_t)required_size;
 }
 
-// Implementation
-void msgpack_init(msgpack_t * km) {
-    km->count = 0;
-    // Initialize all pairs to 0
-    memset(km->pairs, 0, sizeof(msgpack_pair_t) * MSGPACK_PAIR_ARRAY_SIZE);
+bool msgpack_read(msgpack_t * km, char *buffer, uint8_t length) {
+    if (!km || !buffer || length < 5) {
+        uprintf("Error: Invalid parameters\n");
+        return false;
+    }
+
+    char *ptr = buffer;
+    uint8_t remaining = length;
+
+    // Verify "QMV1" header (4 bytes + marker)
+    if (remaining < 5 || *ptr != 0xa4) {
+        uprintf("Error: Invalid header marker\n");
+        return false;
+    }
+    ptr++;
+    remaining--;
+
+    if (strncmp(ptr, "QMV1", 4) != 0) {
+        uprintf("Error: Invalid header string\n");
+        return false;
+    }
+    ptr += 4;
+    remaining -= 4;
+
+    // Verify map marker and get count
+    if (remaining < 1 || (*ptr & 0xf0) != 0x80) {
+        uprintf("Error: Invalid map marker\n");
+        return false;
+    }
+    uint8_t map_size = *ptr & 0x0f;
+    ptr++;
+    remaining--;
+
+    // Reset message pack structure
+    msgpack_init(km);
+
+    // Read all key-value pairs
+    for (uint8_t i = 0; i < map_size; i++) {
+        if (remaining < 2) {  // Need at least key + value type
+            uprintf("Error: Message truncated at pair %d\n", i);
+            return false;
+        }
+
+        // Read key
+        uint8_t key = *ptr;
+        ptr++;
+        remaining--;
+
+        // Check value type
+        int16_t value;
+        if (*ptr == 0xd1) {  // int16 value
+            ptr++;  // Skip marker
+            uint8_t high = *ptr++;
+            uint8_t low = *ptr++;
+            value = (high << 8) | low;
+            remaining -= 3;
+        } else if (*ptr == 0xd0) {  // int8 value
+            ptr++;  // Skip marker
+            int8_t byte = *ptr++;
+            value = byte;
+            remaining -= 2;
+        }else { // uint8 only to show
+            int8_t byte = *ptr++;
+            value = byte;
+            remaining--;
+         }
+
+        // Add pair to message pack structure
+        if (!msgpack_add(km, key, value)) {
+            uprintf("Error: Failed to add pair %d\n", i);
+            return false;
+        }
+        uprintf( "Key: %d, Value: %d\n", key, value);
+
+    }
+    uprintf("Successfully read %d pairs\n", km->count);
+    return true;
 }
 
 // Helper function to add a pair
-bool msgpack_add(msgpack_t * km, uint8_t key, uint8_t value) {
+bool msgpack_add(msgpack_t * km, uint8_t key, int16_t value) {
     if (km->count >= 10) return false;  // Array full
 
     km->pairs[km->count].key = key;
@@ -39,81 +150,17 @@ bool msgpack_add(msgpack_t * km, uint8_t key, uint8_t value) {
     return true;
 }
 
-void msgpack_send(msgpack_t * km) {
-    char buffer[RAW_EPSIZE];
-    mpack_writer_t writer;
-
-    mpack_writer_init(&writer, buffer, sizeof(buffer));
-
-    // Write format identifier string "MPACK"
-    mpack_write_cstr(&writer, "QMV1");
-
-    // Start writing map with number of pairs
-    mpack_start_map(&writer, km->count);
-    // Loop through all pairs
-    for (size_t i = 0; i < km->count; i++) {
-        mpack_write_uint(&writer, km->pairs[i].key);
-        mpack_write_uint(&writer, km->pairs[i].value);
-    }
-
-    mpack_finish_map(&writer);
-
-    if (mpack_writer_destroy(&writer) == mpack_ok) {
-        raw_hid_send((uint8_t*)buffer, RAW_EPSIZE);
-        uprintf("Sent %d key-value pairs\n", km->count);
-    }
-}
-
-bool msgpack_read(msgpack_t * km, char * buffer, size_t length) {
-     mpack_reader_t reader;
-    bool success = false;
-
-    mpack_reader_init_data(&reader, buffer, length);
-
-    // Check format identifier
-    char format[5];
-    mpack_expect_cstr(&reader, format, sizeof(format));
-    if (strcmp(format, "QMV1") != 0) {
-        uprintf("Invalid format identifier\n");
-        goto cleanup;
-    }
-
-    // Read map
-    uint32_t count = mpack_expect_map(&reader);
-    if (count > MSGPACK_PAIR_ARRAY_SIZE) {
-        uprintf("Too many pairs received: %lu\n", count);
-        goto cleanup;
-    }
-
-    // Initialize msgpack structure
-    msgpack_init(km);
-
-    // Read all key-value pairs
-    for (uint32_t i = 0; i < count; i++) {
-        uint8_t key = mpack_expect_uint(&reader);
-        uint8_t value = mpack_expect_uint(&reader);
-        msgpack_add(km, key, value);
-        uprintf("key %s key-value: %d\n", msgpack_keys[key].name, value);
-    }
-    mpack_done_map(&reader);
-    success = true;
-    uprintf("Received %d key-value pairs\n", km->count);
-
-cleanup:
-    if (mpack_reader_destroy(&reader) != mpack_ok) {
-        uprintf("Error reading msgpack data\n");
-        return false;
-    }
-    return success;
+void msgpack_init(msgpack_t* km) {
+    memset(km, 0, sizeof(msgpack_t));
 }
 
 bool msgpack_log(msgpack_t* km) {
-    char outmsg[1024] = ""; // Buffer to hold the output message
-    char buffer[100]; // Temporary buffer for each key-value pair
+    char outmsg[1024] = {}; // Buffer to hold the output message
+    char buffer[100]= {}; // Temporary buffer for each key-value pair
 
     for (uint32_t i = 0; i < km->count; i++) {
         // Format the key-value pair into the buffer
-        sprintf(buffer, "Key: %u, Value: %u\n", km->pairs[i].key, km->pairs[i].value);
+        sprintf(buffer, "Key: %s, Value: %d\n", msgpack_keys[km->pairs[i].key].name, km->pairs[i].value);
         // Append the buffer to the output message
         strcat(outmsg, buffer);
     }

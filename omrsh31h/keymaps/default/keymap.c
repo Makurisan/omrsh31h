@@ -80,7 +80,7 @@ void raw_hid_receive(uint8_t *data, uint8_t length) {
     }
 
     // Example: Parse incoming JSON-like commands
-    msgpack_t km;
+    msgpack_t km={0};
     if (msgpack_read(&km, (char*)data, length)){
         // Process JSON command
         msgpack_log(&km);

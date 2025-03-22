@@ -18,13 +18,12 @@
 
  #include <stdint.h>
 
-
  #define MSGPACK_PAIR_ARRAY_SIZE 10
 
 // Define data structure
 typedef struct {
     uint8_t key;
-    uint8_t value;
+    int16_t value;
 } msgpack_pair_t;
 
 typedef struct {
@@ -32,8 +31,9 @@ typedef struct {
     msgpack_pair_t pairs[MSGPACK_PAIR_ARRAY_SIZE];
 } msgpack_t;
 
-bool msgpack_add(msgpack_t *msgpack, uint8_t key, uint8_t value);
+bool msgpack_add(msgpack_t *msgpack, uint8_t key, int16_t value);
 void msgpack_init(msgpack_t *msgpack);
-void msgpack_send(msgpack_t *msgpack);
-bool msgpack_read(msgpack_t * km, char *buffer, size_t length);
+//void msgpack_send(msgpack_t *msgpack);
+int8_t msgpack_send(const msgpack_t* msgpack);
+bool msgpack_read(msgpack_t * km, char *buffer, uint8_t length);
 bool msgpack_log(msgpack_t* km);

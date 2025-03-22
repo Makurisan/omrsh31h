@@ -35,7 +35,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MSGPACK_UNKNOWN             0
 #define MSGPACK_CURRENT_KEYCODE     1
 #define MSGPACK_CURRENT_LAYER       2
-#define MSGPACK_CURRENT_LEDSTATE    3
+#define MSGPACK_CURRENT_GETLAYER    3
+#define MSGPACK_CURRENT_LEDSTATE    4
 
 //#define QUICK_TAP_TERM 0
 #define TAPPING_TERM 175  // Time window for double tap (in ms)
